@@ -1,7 +1,6 @@
 import streamlit as st
 import cv2
 import numpy as np
-import pandas as pd
 
 from processing.noise import (
     gaussian_noise,
@@ -41,7 +40,7 @@ st.caption("Simulasi Penambahan Noise dan Restorasi Citra")
 st.divider()
 
 # ==============================
-# UPLOAD IMAGE
+# UPLOAD IMAGE (STABIL)
 # ==============================
 uploaded_file = st.file_uploader(
     "Upload Gambar (Grayscale)",
@@ -51,6 +50,7 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
     new_bytes = uploaded_file.getvalue()
 
+    # reset hanya jika file BERUBAH
     if st.session_state.file_bytes != new_bytes:
         st.session_state.file_bytes = new_bytes
 
@@ -77,7 +77,7 @@ mode = st.radio(
 st.divider()
 
 # ==============================
-# DISPLAY IMAGES
+# DISPLAY IMAGE
 # ==============================
 c1, c2, c3 = st.columns(3)
 
@@ -105,7 +105,7 @@ with c3:
 st.divider()
 
 # ==============================
-# TAMBAH NOISE (PRESET)
+# TAMBAH NOISE (SEDANG OTOMATIS)
 # ==============================
 if mode == "Tambah Noise" and st.session_state.original is not None:
 
@@ -114,50 +114,39 @@ if mode == "Tambah Noise" and st.session_state.original is not None:
         ["Gaussian", "Salt & Pepper", "Uniform", "Rayleigh", "Exponential", "Gamma"]
     )
 
-    noise_level = st.selectbox(
-        "Tingkat Noise",
-        ["Ringan", "Sedang", "Berat"]
-    )
-
     st.caption(
-        "Tingkat noise ditentukan oleh sistem agar degradasi citra tetap realistis "
-        "dan proses restorasi dapat diamati dengan jelas."
+        "Sistem secara otomatis menggunakan tingkat noise sedang "
+        "agar efek noise terlihat jelas dan masih dapat direstorasi."
     )
 
     if st.button("Tambahkan Noise"):
         img = st.session_state.original
 
+        # === NOISE LEVEL: SEDANG ===
         if noise_type == "Gaussian":
-            params = {"Ringan": 15, "Sedang": 35, "Berat": 60}
-            st.session_state.noisy = gaussian_noise(img, sigma=params[noise_level])
+            st.session_state.noisy = gaussian_noise(img, sigma=35)
 
         elif noise_type == "Salt & Pepper":
-            params = {"Ringan": 0.01, "Sedang": 0.03, "Berat": 0.06}
-            st.session_state.noisy = salt_pepper_noise(img, prob=params[noise_level])
+            st.session_state.noisy = salt_pepper_noise(img, prob=0.03)
 
         elif noise_type == "Uniform":
-            params = {"Ringan": 15, "Sedang": 35, "Berat": 60}
-            v = params[noise_level]
-            st.session_state.noisy = uniform_noise(img, -v, v)
+            st.session_state.noisy = uniform_noise(img, -35, 35)
 
         elif noise_type == "Rayleigh":
-            params = {"Ringan": 15, "Sedang": 30, "Berat": 50}
-            st.session_state.noisy = rayleigh_noise(img, scale=params[noise_level])
+            st.session_state.noisy = rayleigh_noise(img, scale=30)
 
         elif noise_type == "Exponential":
-            params = {"Ringan": 15, "Sedang": 30, "Berat": 50}
-            st.session_state.noisy = exponential_noise(img, scale=params[noise_level])
+            st.session_state.noisy = exponential_noise(img, scale=30)
 
         elif noise_type == "Gamma":
-            params = {"Ringan": 8, "Sedang": 15, "Berat": 25}
-            st.session_state.noisy = gamma_noise(img, scale=params[noise_level])
+            st.session_state.noisy = gamma_noise(img, scale=15)
 
         st.session_state.result = None
-        st.success(f"Noise {noise_type} ({noise_level}) berhasil ditambahkan")
+        st.success(f"Noise {noise_type} (Sedang) berhasil ditambahkan")
         st.rerun()
 
 # ==============================
-# MODE: RESTORASI
+# RESTORASI
 # ==============================
 if mode == "Restorasi Citra":
 
@@ -178,8 +167,8 @@ if mode == "Restorasi Citra":
         )
 
         st.caption(
-            "Kernel berukuran ganjil digunakan agar terdapat piksel pusat "
-            "dan dibatasi hingga 15 untuk mencegah citra menjadi terlalu blur."
+            "Kernel dibuat ganjil dan dibatasi hingga 15 "
+            "agar terdapat piksel pusat dan citra tidak terlalu blur."
         )
 
         if st.button("Lakukan Restorasi"):
@@ -194,4 +183,3 @@ if mode == "Restorasi Citra":
 
             st.success("Restorasi citra berhasil")
             st.rerun()
-
