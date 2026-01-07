@@ -12,10 +12,10 @@ def median_filter(image, ksize=3):
 
 # Wiener / Adaptive Filtering
 def wiener_filter(image, ksize=3):
-    if len(image.shape) == 3:  # RGB
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        restored = wiener(gray, (ksize, ksize))
-        return np.uint8(restored)
-    else:
-        restored = wiener(image, (ksize, ksize))
-        return np.uint8(restored)
+    img = image.astype(np.float32)
+
+    filtered = wiener(img, (ksize, ksize))
+
+    filtered = np.clip(filtered, 0, 255)
+
+    return filtered.astype(np.uint8)
