@@ -10,36 +10,41 @@ from processing.noise import (
     exponential_noise,
     uniform_noise
 )
+
 from processing.restoration import (
     mean_filter,
     median_filter,
     wiener_filter
 )
 
-
+# ==============================
 # CONFIG
+# ==============================
 
 st.set_page_config(
     page_title="Pengolahan Citra Digital",
     layout="wide"
 )
 
-
+# ==============================
 # SESSION STATE INIT
+# ==============================
 
 for key in ["file_bytes", "original", "noisy", "result"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
-
+# ==============================
 # HEADER
+# ==============================
 
-st.title("Pengolahan Citra Digital menggunakan Noise dan Restorasi Citra")
-
+st.title("Pengolahan Citra Digital")
+st.caption("Simulasi Penambahan Noise dan Restorasi Citra")
 st.divider()
 
-
+# ==============================
 # UPLOAD IMAGE
+# ==============================
 
 uploaded_file = st.file_uploader(
     "Upload Gambar",
@@ -51,6 +56,7 @@ if uploaded_file is not None:
 
     if st.session_state.file_bytes != new_bytes:
         st.session_state.file_bytes = new_bytes
+
         img_array = np.frombuffer(new_bytes, np.uint8)
         image = cv2.imdecode(img_array, cv2.IMREAD_GRAYSCALE)
 
@@ -62,8 +68,9 @@ if uploaded_file is not None:
         st.session_state.noisy = None
         st.session_state.result = None
 
-
+# ==============================
 # MODE
+# ==============================
 
 mode = st.radio(
     "Mode Proses",
@@ -73,73 +80,96 @@ mode = st.radio(
 
 st.divider()
 
-
+# ==============================
 # DISPLAY IMAGES
+# ==============================
 
 c1, c2, c3 = st.columns(3)
 
 with c1:
     st.subheader("Citra Asli")
     if st.session_state.original is not None:
-        st.image(st.session_state.original, width=280, clamp=True)
+        st.image(st.session_state.original, clamp=True)
     else:
         st.info("Belum ada gambar")
 
 with c2:
     st.subheader("Citra Noisy")
     if st.session_state.noisy is not None:
-        st.image(st.session_state.noisy, width=280, clamp=True)
+        st.image(st.session_state.noisy, clamp=True)
     else:
         st.info("Belum ada noise")
 
 with c3:
     st.subheader("Hasil Restorasi")
     if st.session_state.result is not None:
-        st.image(st.session_state.result, width=280, clamp=True)
+        st.image(st.session_state.result, clamp=True)
     else:
         st.info("Belum ada restorasi")
 
 st.divider()
 
-
-# MODE: TAMBAH NOISE
-
+# =========================
+# TAMBAH NOISE (PRESET)
+# =========================
 if mode == "Tambah Noise" and st.session_state.original is not None:
 
     noise_type = st.selectbox(
         "Jenis Noise",
         [
             "Gaussian",
-            "Rayleigh",
-            "Gamma",
             "Salt & Pepper",
+            "Uniform",
+            "Rayleigh",
             "Exponential",
-            "Uniform"
+            "Gamma"
         ]
+    )
+
+    noise_level = st.selectbox(
+        "Tingkat Noise",
+        ["Ringan", "Sedang", "Berat"]
     )
 
     if st.button("Tambahkan Noise"):
         img = st.session_state.original
 
+        # =========================
+        # PRESET PARAMETER NOISE
+        # =========================
         if noise_type == "Gaussian":
-            st.session_state.noisy = gaussian_noise(img)
-        elif noise_type == "Rayleigh":
-            st.session_state.noisy = rayleigh_noise(img)
-        elif noise_type == "Gamma":
-            st.session_state.noisy = gamma_noise(img)
+            params = {"Ringan": 15, "Sedang": 35, "Berat": 60}
+            st.session_state.noisy = gaussian_noise(img, sigma=params[noise_level])
+
         elif noise_type == "Salt & Pepper":
-            st.session_state.noisy = salt_pepper_noise(img)
-        elif noise_type == "Exponential":
-            st.session_state.noisy = exponential_noise(img)
+            params = {"Ringan": 0.01, "Sedang": 0.03, "Berat": 0.06}
+            st.session_state.noisy = salt_pepper_noise(img, prob=params[noise_level])
+
         elif noise_type == "Uniform":
-            st.session_state.noisy = uniform_noise(img)
+            params = {"Ringan": 15, "Sedang": 35, "Berat": 60}
+            v = params[noise_level]
+            st.session_state.noisy = uniform_noise(img, -v, v)
+
+        elif noise_type == "Rayleigh":
+            params = {"Ringan": 15, "Sedang": 30, "Berat": 50}
+            st.session_state.noisy = rayleigh_noise(img, scale=params[noise_level])
+
+        elif noise_type == "Exponential":
+            params = {"Ringan": 15, "Sedang": 30, "Berat": 50}
+            st.session_state.noisy = exponential_noise(img, scale=params[noise_level])
+
+        elif noise_type == "Gamma":
+            params = {"Ringan": 8, "Sedang": 15, "Berat": 25}
+            st.session_state.noisy = gamma_noise(img, scale=params[noise_level])
 
         st.session_state.result = None
-        st.success("Noise berhasil ditambahkan")
+        st.success(f"Noise {noise_type} ({noise_level}) berhasil ditambahkan")
         st.rerun()
 
 
+# ==============================
 # MODE: RESTORASI
+# ==============================
 
 if mode == "Restorasi Citra":
 
@@ -151,13 +181,24 @@ if mode == "Restorasi Citra":
             ["Mean", "Median", "Wiener"]
         )
 
-        ksize = st.slider(
-            "Kernel Size",
+        # ==============================
+        # KERNEL INPUT (DIKETIK MANUAL)
+        # ==============================
+
+        ksize = st.number_input(
+            "Kernel Size (bilangan ganjil ≥ 3)",
             min_value=3,
-            max_value=7,
+
             step=2,
             value=3
         )
+
+        if ksize < 3 or ksize % 2 == 0:
+            st.error("Kernel harus bilangan ganjil dan ≥ 3")
+            st.stop()
+
+        if ksize > 15:
+            st.warning("Kernel terlalu besar dapat menyebabkan citra menjadi blur")
 
         if st.button("Lakukan Restorasi"):
             img = st.session_state.noisy
@@ -169,6 +210,5 @@ if mode == "Restorasi Citra":
             elif method == "Wiener":
                 st.session_state.result = wiener_filter(img, ksize)
 
-            st.success("Restorasi selesai")
+            st.success("Restorasi citra berhasil")
             st.rerun()
-
