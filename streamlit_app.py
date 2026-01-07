@@ -1,6 +1,7 @@
 import streamlit as st
 import cv2
 import numpy as np
+import pandas as pd
 
 from processing.noise import (
     gaussian_noise,
@@ -20,7 +21,6 @@ from processing.restoration import (
 # ==============================
 # CONFIG
 # ==============================
-
 st.set_page_config(
     page_title="Pengolahan Citra Digital",
     layout="wide"
@@ -29,7 +29,6 @@ st.set_page_config(
 # ==============================
 # SESSION STATE INIT
 # ==============================
-
 for key in ["file_bytes", "original", "noisy", "result"]:
     if key not in st.session_state:
         st.session_state[key] = None
@@ -37,7 +36,6 @@ for key in ["file_bytes", "original", "noisy", "result"]:
 # ==============================
 # HEADER
 # ==============================
-
 st.title("Pengolahan Citra Digital")
 st.caption("Simulasi Penambahan Noise dan Restorasi Citra")
 st.divider()
@@ -45,9 +43,8 @@ st.divider()
 # ==============================
 # UPLOAD IMAGE
 # ==============================
-
 uploaded_file = st.file_uploader(
-    "Upload Gambar",
+    "Upload Gambar (Grayscale)",
     type=["jpg", "jpeg", "png"]
 )
 
@@ -71,7 +68,6 @@ if uploaded_file is not None:
 # ==============================
 # MODE
 # ==============================
-
 mode = st.radio(
     "Mode Proses",
     ["Tambah Noise", "Restorasi Citra"],
@@ -83,7 +79,6 @@ st.divider()
 # ==============================
 # DISPLAY IMAGES
 # ==============================
-
 c1, c2, c3 = st.columns(3)
 
 with c1:
@@ -109,21 +104,14 @@ with c3:
 
 st.divider()
 
-# =========================
+# ==============================
 # TAMBAH NOISE (PRESET)
-# =========================
+# ==============================
 if mode == "Tambah Noise" and st.session_state.original is not None:
 
     noise_type = st.selectbox(
         "Jenis Noise",
-        [
-            "Gaussian",
-            "Salt & Pepper",
-            "Uniform",
-            "Rayleigh",
-            "Exponential",
-            "Gamma"
-        ]
+        ["Gaussian", "Salt & Pepper", "Uniform", "Rayleigh", "Exponential", "Gamma"]
     )
 
     noise_level = st.selectbox(
@@ -131,12 +119,14 @@ if mode == "Tambah Noise" and st.session_state.original is not None:
         ["Ringan", "Sedang", "Berat"]
     )
 
+    st.caption(
+        "Tingkat noise ditentukan oleh sistem agar degradasi citra tetap realistis "
+        "dan proses restorasi dapat diamati dengan jelas."
+    )
+
     if st.button("Tambahkan Noise"):
         img = st.session_state.original
 
-        # =========================
-        # PRESET PARAMETER NOISE
-        # =========================
         if noise_type == "Gaussian":
             params = {"Ringan": 15, "Sedang": 35, "Berat": 60}
             st.session_state.noisy = gaussian_noise(img, sigma=params[noise_level])
@@ -166,11 +156,9 @@ if mode == "Tambah Noise" and st.session_state.original is not None:
         st.success(f"Noise {noise_type} ({noise_level}) berhasil ditambahkan")
         st.rerun()
 
-
 # ==============================
 # MODE: RESTORASI
 # ==============================
-
 if mode == "Restorasi Citra":
 
     if st.session_state.noisy is None:
@@ -181,24 +169,18 @@ if mode == "Restorasi Citra":
             ["Mean", "Median", "Wiener"]
         )
 
-        # ==============================
-        # KERNEL INPUT (DIKETIK MANUAL)
-        # ==============================
-
         ksize = st.number_input(
-            "Kernel Size (bilangan ganjil ≥ 3)",
+            "Ukuran Kernel (bilangan ganjil 3–15)",
             min_value=3,
-
+            max_value=15,
             step=2,
             value=3
         )
 
-        if ksize < 3 or ksize % 2 == 0:
-            st.error("Kernel harus bilangan ganjil dan ≥ 3")
-            st.stop()
-
-        if ksize > 15:
-            st.warning("Kernel terlalu besar dapat menyebabkan citra menjadi blur")
+        st.caption(
+            "Kernel berukuran ganjil digunakan agar terdapat piksel pusat "
+            "dan dibatasi hingga 15 untuk mencegah citra menjadi terlalu blur."
+        )
 
         if st.button("Lakukan Restorasi"):
             img = st.session_state.noisy
@@ -212,3 +194,4 @@ if mode == "Restorasi Citra":
 
             st.success("Restorasi citra berhasil")
             st.rerun()
+
