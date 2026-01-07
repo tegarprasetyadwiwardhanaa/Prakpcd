@@ -114,11 +114,6 @@ if mode == "Tambah Noise" and st.session_state.original is not None:
         ["Gaussian", "Salt & Pepper", "Uniform", "Rayleigh", "Exponential", "Gamma"]
     )
 
-    st.caption(
-        "Sistem secara otomatis menggunakan tingkat noise sedang "
-        "agar efek noise terlihat jelas dan masih dapat direstorasi."
-    )
-
     if st.button("Tambahkan Noise"):
         img = st.session_state.original
 
